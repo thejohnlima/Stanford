@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-class EmojiMemoryGame {
-  private(set) var model: MemoryGame<String> = createMemoryGame()
+class EmojiMemoryGame: ObservableObject {
+  @Published private(set) var model: MemoryGame<String> = createMemoryGame()
 
   func choose(card: MemoryGame<String>.Card) {
     model.choose(card: card)

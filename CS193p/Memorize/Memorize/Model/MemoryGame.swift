@@ -20,8 +20,10 @@ struct MemoryGame<CardContent> {
     }
   }
 
-  func choose(card: Card) {
+  mutating func choose(card: Card) {
     print("Card chosen: \(card)")
+    let choosenIndex = cards.firstIndex { $0.id == card.id }! as Int
+    cards[choosenIndex].isFaceUp = !cards[choosenIndex].isFaceUp
   }
 }
 
