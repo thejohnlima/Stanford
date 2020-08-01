@@ -11,12 +11,11 @@ struct EmojiMemoryGameView: View {
   @ObservedObject var viewModel: EmojiMemoryGame
 
   var body: some View {
-    HStack {
-      ForEach(viewModel.model.cards) { card in
-        CardView(card: card).onTapGesture {
-          viewModel.choose(card: card)
-        }
+    GridView(viewModel.model.cards) { card in
+      CardView(card: card).onTapGesture {
+        viewModel.choose(card: card)
       }
+      .padding(5)
     }
     .padding()
     .foregroundColor(.orange)
