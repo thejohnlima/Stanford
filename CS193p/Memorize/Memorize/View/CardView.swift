@@ -8,31 +8,43 @@
 import SwiftUI
 
 struct CardView: View {
-  private let cornerRadius: CGFloat = 10
-  private let edgeLineWidth: CGFloat = 3
-  private let fontScaleFactor: CGFloat = 0.75
+  private let fontScaleFactor: CGFloat = 0.7
 
   var card: MemoryGame<String>.Card
 
   var body: some View {
     GeometryReader { geometry in
+      body(for: geometry.size)
+    }
+  }
+
+  @ViewBuilder
+  func body(for size: CGSize) -> some View {
+    if card.isFaceUp || !card.isMatched {
       ZStack {
-        if card.isFaceUp {
-          RoundedRectangle(cornerRadius: cornerRadius).fill(Color.white)
-          RoundedRectangle(cornerRadius: cornerRadius).stroke(lineWidth: edgeLineWidth)
-          Text(card.content)
-        } else if !card.isMatched {
-          RoundedRectangle(cornerRadius: cornerRadius).fill()
-        }
+        PieView(
+          startAngle: Angle.degrees(0-90),
+          endAngle: Angle.degrees(110-90),
+          clockwise: true
+        )
+        .padding(5)
+        .opacity(0.4)
+        Text(card.content)
+          .font(.system(size: min(size.width, size.height) * fontScaleFactor))
       }
-      .font(.system(size: min(geometry.size.width, geometry.size.height) * fontScaleFactor))
+      .cardify(isFaceUp: card.isFaceUp)
     }
   }
 }
 
 struct CardView_Previews: PreviewProvider {
   static var previews: some View {
-    let card = EmojiMemoryGame.createMemoryGame().cards.first!
-    CardView(card: card)
+    let game = EmojiMemoryGame()
+    game.choose(card: game.model.cards[0])
+
+    let card = game.model.cards[0]
+
+    return CardView(card: card)
+      .foregroundColor(.orange)
   }
 }
