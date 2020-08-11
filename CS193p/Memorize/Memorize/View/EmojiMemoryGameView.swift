@@ -13,13 +13,23 @@ struct EmojiMemoryGameView: View {
   var body: some View {
     GridView(viewModel.model.cards) { card in
       CardView(card: card).onTapGesture {
-        viewModel.choose(card: card)
+        withAnimation(.linear(duration: 0.5)) {
+          viewModel.choose(card: card)
+        }
       }
       .padding(5)
     }
     .padding()
     .foregroundColor(.orange)
     .font(.largeTitle)
+
+    Button(action: {
+      withAnimation(.easeInOut) {
+        viewModel.resetGame()
+      }
+    }, label: {
+      Text("New Game")
+    })
   }
 }
 
