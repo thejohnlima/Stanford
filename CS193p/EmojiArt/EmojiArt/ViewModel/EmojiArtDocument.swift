@@ -6,27 +6,37 @@
 //
 
 import SwiftUI
+import Combine
 
 class EmojiArtDocument: ObservableObject {
   static let palette: String = "⭐️🌨🍎🌎⚾️🏀"
 
   @Published private(set) var backgroundImage: UIImage?
+  @Published private var emojiArt: EmojiArt
 
-  private var emojiArt: EmojiArt {
-    willSet {
-      objectWillChange.send()
-    }
-    didSet {
-      UserDefaults.standard.setValue(emojiArt.json, forKey: Key.emojiArtDocumentUntitled.rawValue)
-    }
-  }
+  private var autosaveCancellable: AnyCancellable?
+  private var fetchImageCancellable: AnyCancellable?
 
   var emojis: [EmojiArt.Emoji] {
     emojiArt.emojis
   }
 
+  var backgroundURL: URL? {
+    get { emojiArt.backgroundURL }
+    set {
+      emojiArt.backgroundURL = newValue?.imageURL
+      fetchBackgroundImageData()
+    }
+  }
+
   init() {
     emojiArt = EmojiArt(json: UserDefaults.standard.data(forKey: Key.emojiArtDocumentUntitled.rawValue)) ?? EmojiArt()
+
+    autosaveCancellable = $emojiArt.sink { emojiArt  in
+      print("\(emojiArt.json?.utf8 ?? "nil")")
+      UserDefaults.standard.setValue(emojiArt.json, forKey: Key.emojiArtDocumentUntitled.rawValue)
+    }
+
     fetchBackgroundImageData()
   }
 
@@ -47,23 +57,18 @@ class EmojiArtDocument: ObservableObject {
     }
   }
 
-  func setBackgroundURL(_ url: URL?) {
-    emojiArt.backgroundURL = url?.imageURL
-    fetchBackgroundImageData()
-  }
-
   private func fetchBackgroundImageData() {
     backgroundImage = nil
 
-    if let url = emojiArt.backgroundURL {
-      DispatchQueue.global(qos: .userInitiated).async {
-        guard let imageData = try? Data(contentsOf: url) else { return }
-        DispatchQueue.main.async { [weak self] in
-          guard url == self?.emojiArt.backgroundURL else { return }
-          self?.backgroundImage = UIImage(data: imageData)
-        }
-      }
-    }
+    guard let url = emojiArt.backgroundURL else { return }
+
+    fetchImageCancellable?.cancel()
+
+    fetchImageCancellable = URLSession.shared.dataTaskPublisher(for: url)
+      .map { data, _ in UIImage(data: data) }
+      .receive(on: DispatchQueue.main)
+      .replaceError(with: nil)
+      .assign(to: \.backgroundImage, on: self)
   }
 }
 

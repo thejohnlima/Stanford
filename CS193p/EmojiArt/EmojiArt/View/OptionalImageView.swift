@@ -1,5 +1,5 @@
 //
-//  OptionalImage.swift
+//  OptionalImageView.swift
 //  EmojiArt
 //
 //  Created by John Lima on 8/26/20.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct OptionalImage: View {
+struct OptionalImageView: View {
   var uiImage: UIImage?
 
   var body: some View {

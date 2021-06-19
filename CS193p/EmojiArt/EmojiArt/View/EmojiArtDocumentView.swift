@@ -15,48 +15,67 @@ struct EmojiArtDocumentView: View {
   @GestureState private var gestureZoomScale: CGFloat = 1
   @State private var steadyStatePanOffset: CGSize = .zero
   @GestureState private var gesturePanOffset: CGSize = .zero
+  @State private var chosenPalette = ""
 
   var body: some View {
-    ScrollView(.horizontal) {
+    VStack {
       HStack {
-        ForEach(EmojiArtDocument.palette.map { String($0) }, id: \.self) { emoji in
-          Text(emoji)
-            .font(.system(size: defaultEmojiSize))
-            .onDrag {
-              NSItemProvider(object: emoji as NSString)
+        PaletteChooserView(document: document, chosenPalette: $chosenPalette)
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack {
+            ForEach(chosenPalette.map { String($0) }, id: \.self) { emoji in
+              Text(emoji)
+                .font(.system(size: defaultEmojiSize))
+                .onDrag {
+                  NSItemProvider(object: emoji as NSString)
+                }
             }
+          }
+        }
+        .onAppear {
+          chosenPalette = document.defaultPalette
+        }
+      }
+
+      GeometryReader { geometry in
+        ZStack {
+          Color.white.overlay(
+            OptionalImageView(uiImage: document.backgroundImage)
+              .scaleEffect(zoomScale)
+              .offset(panOffset)
+          )
+            .gesture(doubleTapToZoom(in: geometry.size))
+
+          if isLoading {
+            Image(systemName: "hourglass").imageScale(.large).spinning()
+          } else {
+            ForEach(document.emojis) { emoji in
+              Text(emoji.text)
+                .font(animatableWithSize: emoji.fontSize * zoomScale)
+                .position(position(for: emoji, in: geometry.size))
+            }
+          }
+        }
+        .clipped()
+        .gesture(panGesture())
+        .gesture(zoomGesture())
+        .edgesIgnoringSafeArea([.horizontal, .bottom])
+        .onReceive(document.$backgroundImage) { image in
+          zoomToFit(image, in: geometry.size)
+        }
+        .onDrop(of: ["public.image", "public.text"], isTargeted: nil) { providers, location in
+          var location = geometry.convert(location, from: .global)
+          location = CGPoint(x: location.x - geometry.size.width / 2, y: location.y - geometry.size.height / 2)
+          location = CGPoint(x: location.x - panOffset.width, y: location.y - panOffset.height)
+          location = CGPoint(x: location.x / zoomScale, y: location.y / zoomScale)
+          return drop(providers, at: location)
         }
       }
     }
-    .padding(.horizontal)
+  }
 
-    GeometryReader { geometry in
-      ZStack {
-        Color.white.overlay(
-          OptionalImage(uiImage: document.backgroundImage)
-            .scaleEffect(zoomScale)
-            .offset(panOffset)
-        )
-        .gesture(doubleTapToZoom(in: geometry.size))
-
-        ForEach(document.emojis) { emoji in
-          Text(emoji.text)
-            .font(animatableWithSize: emoji.fontSize * zoomScale)
-            .position(position(for: emoji, in: geometry.size))
-        }
-      }
-      .clipped()
-      .gesture(panGesture())
-      .gesture(zoomGesture())
-      .edgesIgnoringSafeArea([.horizontal, .bottom])
-      .onDrop(of: ["public.image", "public.text"], isTargeted: nil) { providers, location in
-        var location = geometry.convert(location, from: .global)
-        location = CGPoint(x: location.x - geometry.size.width / 2, y: location.y - geometry.size.height / 2)
-        location = CGPoint(x: location.x - panOffset.width, y: location.y - panOffset.height)
-        location = CGPoint(x: location.x / zoomScale, y: location.y / zoomScale)
-        return drop(providers, at: location)
-      }
-    }
+  private var isLoading: Bool {
+    document.backgroundURL != nil && document.backgroundImage == nil
   }
 
   private var zoomScale: CGFloat {
@@ -115,7 +134,7 @@ struct EmojiArtDocumentView: View {
 
   private func drop(_ providers: [NSItemProvider], at location: CGPoint) -> Bool {
     var found = providers.loadObjects(ofType: URL.self) { url in
-      document.setBackgroundURL(url)
+      document.backgroundURL = url
     }
 
     if !found {
